@@ -1,5 +1,4 @@
-import { Il2CppClassWrapper } from "./il2cpp_class";
-
+export type Il2CppThread = NativePointer;
 export type Il2CppDomain = NativePointer;
 export type Il2CppAssembly = NativePointer;
 export type Il2CppImage = NativePointer;
@@ -9,8 +8,12 @@ export type Il2CppType = NativePointer;
 export type FieldInfo = NativePointer;
 export type MethodInfo = NativePointer;
 
+// https://git.kpi.fei.tuke.sk/tg206vc/liveitprojects/blob/283bff797d9dc1cf3ae0b5bc12830233b3c19250/Il2CppOutputProject/IL2CPP/libil2cpp/il2cpp-api.cpp
 export class Il2Cpp {
 
+    private _il2cpp_thread_current: NativeFunction;
+    private _il2cpp_thread_attach: NativeFunction;
+    private _il2cpp_thread_detach: NativeFunction;
     private _il2cpp_domain_get: NativeFunction;
     private _il2cpp_domain_get_assemblies: NativeFunction;
     private _il2cpp_assembly_get_image: NativeFunction;
@@ -34,6 +37,9 @@ export class Il2Cpp {
     constructor () {
         let module = Process.findModuleByName("GameAssembly.dll")!;
 
+        this._il2cpp_thread_current = new NativeFunction(module.findExportByName("il2cpp_thread_current")!, 'pointer', []);
+        this._il2cpp_thread_attach = new NativeFunction(module.findExportByName("il2cpp_thread_attach")!, 'pointer', ['pointer']);
+        this._il2cpp_thread_detach = new NativeFunction(module.findExportByName("il2cpp_thread_detach")!, 'void', ['pointer']);
         this._il2cpp_domain_get = new NativeFunction(module.findExportByName("il2cpp_domain_get")!, 'pointer', []);
         this._il2cpp_domain_get_assemblies = new NativeFunction(module.findExportByName("il2cpp_domain_get_assemblies")!, 'pointer', ['pointer', 'pointer']);
         this._il2cpp_assembly_get_image = new NativeFunction(module.findExportByName("il2cpp_assembly_get_image")!, 'pointer', ['pointer']);
@@ -53,6 +59,21 @@ export class Il2Cpp {
         this._il2cpp_object_unbox = new NativeFunction(module.findExportByName("il2cpp_object_unbox")!, 'pointer', ['pointer']);
         this._il2cpp_method_get_name = new NativeFunction(module.findExportByName("il2cpp_method_get_name")!, 'pointer', ['pointer']);
         this._il2cpp_runtime_invoke = new NativeFunction(module.findExportByName("il2cpp_runtime_invoke")!, 'pointer', ['pointer', 'pointer', 'pointer', 'pointer']);
+    }
+
+    // Il2CppThread *il2cpp_thread_current()
+    public il2cpp_thread_current(): Il2CppThread {
+        return this._il2cpp_thread_current() as Il2CppThread;
+    }
+
+    // Il2CppThread *il2cpp_thread_attach(Il2CppDomain *domain)
+    public il2cpp_thread_attach(domain: Il2CppDomain): Il2CppThread {
+        return this._il2cpp_thread_attach(domain) as Il2CppThread;
+    }
+
+    // void il2cpp_thread_detach(Il2CppThread *thread)
+    public il2cpp_thread_detach(thread: Il2CppThread): void {
+        this._il2cpp_thread_detach(thread);
     }
 
     // Il2CppDomain* il2cpp_domain_get()
