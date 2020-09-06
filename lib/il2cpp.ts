@@ -1,12 +1,18 @@
-export type Il2CppThread = NativePointer;
-export type Il2CppDomain = NativePointer;
-export type Il2CppAssembly = NativePointer;
-export type Il2CppImage = NativePointer;
-export type Il2CppClass = NativePointer;
-export type Il2CppObject = NativePointer;
-export type Il2CppType = NativePointer;
-export type FieldInfo = NativePointer;
-export type MethodInfo = NativePointer;
+export type Il2CppThread = NativePointer;       // il2cpp-object-internals.h    typedef struct Il2CppThread
+export type Il2CppDomain = NativePointer;       // il2cpp-class-internals.h     typedef struct Il2CppDomain
+export type Il2CppAssembly = NativePointer;     // il2cpp-class-internals.h     typedef struct Il2CppAssembly
+export type Il2CppImage = NativePointer;        // il2cpp-class-internals.h     typedef struct Il2CppImage
+export type Il2CppClass = NativePointer;        // il2cpp-class-internals.h     typedef struct Il2CppClass
+export type Il2CppObject = NativePointer;       // il2cpp-object-internals.h    typedef struct Il2CppObject
+export type Il2CppType = NativePointer;         // il2cpp-runtime-metadata.h    typedef struct Il2CppType
+export type FieldInfo = NativePointer;          // il2cpp-class-internals.h     typedef struct FieldInfo
+export type MethodInfo = NativePointer;         // il2cpp-class-internals.h     typedef struct MethodInfo
+export type IlTypes =
+    | "bool"
+    | "uint"
+    | "int"
+    | "string"
+    | "object";
 
 // https://git.kpi.fei.tuke.sk/tg206vc/liveitprojects/blob/283bff797d9dc1cf3ae0b5bc12830233b3c19250/Il2CppOutputProject/IL2CPP/libil2cpp/il2cpp-api.cpp
 export class Il2Cpp {
@@ -31,8 +37,10 @@ export class Il2Cpp {
     private _il2cpp_field_static_get_value: NativeFunction;
     private _il2cpp_object_get_class: NativeFunction;
     private _il2cpp_object_unbox: NativeFunction;
+    private _il2cpp_method_get_return_type: NativeFunction;
     private _il2cpp_method_get_name: NativeFunction;
     private _il2cpp_runtime_invoke: NativeFunction;
+    private _il2cpp_value_box: NativeFunction;
 
     constructor () {
         let module = Process.findModuleByName("GameAssembly.dll")!;
@@ -57,8 +65,10 @@ export class Il2Cpp {
         this._il2cpp_field_static_get_value = new NativeFunction(module.findExportByName("il2cpp_field_static_get_value")!, 'pointer', ['pointer', 'pointer']);
         this._il2cpp_object_get_class = new NativeFunction(module.findExportByName("il2cpp_object_get_class")!, 'pointer', ['pointer']);
         this._il2cpp_object_unbox = new NativeFunction(module.findExportByName("il2cpp_object_unbox")!, 'pointer', ['pointer']);
+        this._il2cpp_method_get_return_type = new NativeFunction(module.findExportByName("il2cpp_method_get_return_type")!, 'pointer', ['pointer']);
         this._il2cpp_method_get_name = new NativeFunction(module.findExportByName("il2cpp_method_get_name")!, 'pointer', ['pointer']);
         this._il2cpp_runtime_invoke = new NativeFunction(module.findExportByName("il2cpp_runtime_invoke")!, 'pointer', ['pointer', 'pointer', 'pointer', 'pointer']);
+        this._il2cpp_value_box = new NativeFunction(module.findExportByName("il2cpp_value_box")!, 'pointer', ['pointer', 'pointer']);
     }
 
     // Il2CppThread *il2cpp_thread_current()
@@ -161,8 +171,13 @@ export class Il2Cpp {
     }
 
     // void* il2cpp_object_unbox(Il2CppObject* obj)
-    public il2cpp_object_unbox(obj: Il2CppObject): Il2CppClass {
-        return this._il2cpp_object_unbox(obj) as Il2CppClass;
+    public il2cpp_object_unbox(obj: Il2CppObject): NativePointer {
+        return this._il2cpp_object_unbox(obj) as NativePointer;
+    }
+
+    // const Il2CppType* il2cpp_method_get_return_type(const MethodInfo* method)
+    public il2cpp_method_get_return_type(method: MethodInfo): Il2CppType {
+        return this._il2cpp_method_get_return_type(method) as Il2CppType;
     }
 
     // const char* il2cpp_method_get_name(const MethodInfo *method)
@@ -172,16 +187,25 @@ export class Il2Cpp {
 
     // Il2CppObject* il2cpp_runtime_invoke(const MethodInfo *method, void *obj, void **params, Il2CppException **exc)
     public il2cpp_runtime_invoke(method: MethodInfo, obj: NativePointer, params: NativePointer[]): Il2CppObject {
-        let paramsData = Memory.alloc(params.length + 1);
         let exception = Memory.alloc(Process.pointerSize);
-    
-        for (let index = 0; index < params.length; index++) {
-            paramsData.add(index * Process.pointerSize).writePointer(params[index]);
+        let paramsData: NativePointer;
+
+        if (params.length > 0) {
+            paramsData = Memory.alloc(Process.pointerSize * params.length);
+        
+            for (let index = 0; index < params.length; index++) {
+                paramsData.add(index * Process.pointerSize).writePointer(params[index]);
+            }
+        } else {
+            paramsData = ptr(0);
         }
 
-        console.log(method, obj, paramsData, exception);
-
         return this._il2cpp_runtime_invoke(method, obj, paramsData, exception) as Il2CppObject;
+    }
+
+    // Il2CppObject* il2cpp_value_box(Il2CppClass *klass, void* data)
+    public il2cpp_value_box(clazz: Il2CppClass, data: NativePointer): Il2CppObject {
+        return this._il2cpp_value_box(clazz, data) as Il2CppObject;
     }
 
 }

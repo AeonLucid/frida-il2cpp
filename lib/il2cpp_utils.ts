@@ -10,8 +10,8 @@ export class Il2CppUtils {
         this._fieldCache = new Map();
     }
 
-    public readStatic(className: string, fieldName: string): NativePointer {
-        const field = this._findField(className, fieldName);
+    public readStatic(namespace: string, className: string, fieldName: string): NativePointer {
+        const field = this.findField(namespace, className, fieldName);
         if (field.isNull()) {
             return field;
         }
@@ -19,8 +19,8 @@ export class Il2CppUtils {
         return this.il2cpp.il2cpp_field_static_get_value(field);
     }
 
-    public readInstance(className: string, fieldName: string, instance: Il2CppObject): NativePointer {
-        const field = this._findField(className, fieldName);
+    public readInstance(namespace: string, className: string, fieldName: string, instance: Il2CppObject): NativePointer {
+        const field = this.findField(namespace, className, fieldName);
         if (field.isNull()) {
             return field;
         }
@@ -28,12 +28,12 @@ export class Il2CppUtils {
         return this.il2cpp.il2cpp_field_get_value(instance, field);
     }
 
-    public getAllClassFields(className: string, classAddr: Il2CppClass | null = null): Map<string, FieldInfo> {
+    public getAllClassFields(namespace: string, className: string, classAddr: Il2CppClass | null = null): Map<string, FieldInfo> {
         const result = new Map<string, FieldInfo>();
 
         // Find class.
         if (classAddr === null) {
-            classAddr = this._findClass(className);
+            classAddr = this.findClass(namespace, className);
         
             if (classAddr.isNull()) {
                 return result;
@@ -66,12 +66,12 @@ export class Il2CppUtils {
         return result;
     }
 
-    public getAllClassMethods(className: string, classAddr: Il2CppClass | null = null): Map<string, MethodInfo> {
+    public getAllClassMethods(namespace: string, className: string, classAddr: Il2CppClass | null = null): Map<string, MethodInfo> {
         const result = new Map<string, MethodInfo>();
 
         // Find class.
         if (classAddr === null) {
-            classAddr = this._findClass(className);
+            classAddr = this.findClass(namespace, className);
         
             if (classAddr.isNull()) {
                 return result;
@@ -104,7 +104,7 @@ export class Il2CppUtils {
         return result;
     }
 
-    private _findField(searchClassName: string, searchFieldName: string): FieldInfo {
+    public findField(searchNamespace: string, searchClassName: string, searchFieldName: string): FieldInfo {
         // Check field cache.
         const fieldCacheKey = `${searchClassName}_${searchFieldName}`;
 
@@ -113,7 +113,7 @@ export class Il2CppUtils {
         }
 
         // Find class.
-        const classAddr = this._findClass(searchClassName);
+        const classAddr = this.findClass(searchNamespace, searchClassName);
         
         if (classAddr.isNull()) {
             return ptr(0);
@@ -147,7 +147,7 @@ export class Il2CppUtils {
         return ptr(0);
     }
 
-    private _findClass(searchClassName: string): Il2CppClass {
+    public findClass(searchNamespace: string, searchClassName: string): Il2CppClass {
         const domain = this.il2cpp.il2cpp_domain_get();
         const domainAssembliesSize = Memory.alloc(Process.pointerSize);
         const domainAssemblies = this.il2cpp.il2cpp_domain_get_assemblies(domain, domainAssembliesSize);
@@ -161,8 +161,9 @@ export class Il2CppUtils {
             for (let classIndex = 0; classIndex < classCount; classIndex++) {
                 const classAddr = this.il2cpp.il2cpp_image_get_class(image, classIndex);
                 const className = this.il2cpp.il2cpp_class_get_name(classAddr);
+                const classNamespace = this.il2cpp.il2cpp_class_get_namespace(classAddr);
 
-                if (className === searchClassName) {
+                if (classNamespace == searchNamespace && className == searchClassName) {
                     return classAddr;
                 }
             }
